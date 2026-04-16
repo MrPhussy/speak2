@@ -10,6 +10,8 @@
 #     -e HUGGING_FACE_HUB_TOKEN=hf_... \
 #     -e KYUTAI_LLM_API_KEY=... \
 #     your-registry/speak2-unmute:runpod
+#
+# RunPod network volume: mount at /runpod-volume — entrypoint redirects HF/torch/uv caches there.
 
 ARG TARGETARCH
 ARG TRAEFIK_TAG=v3.6.6

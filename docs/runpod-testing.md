@@ -43,6 +43,10 @@ Use a registry RunPod can pull from (Docker Hub, GHCR, ECR, etc.).
 | `KYUTAI_STT_URL` | `ws://127.0.0.1:8091` | Optional (default) |
 | `KYUTAI_TTS_URL` | `ws://127.0.0.1:8092` | Optional (default) |
 | `UV_LINK_MODE` | `copy` | Optional (helps some volume backends) |
+| `RUNPOD_VOLUME_ROOT` | `/runpod-volume` | Optional; base path for persistent caches (default if that directory exists) |
+| `RUNPOD_USE_VOLUME` | `0` or `false` | Optional; disable volume-backed caches even if `/runpod-volume` exists |
+
+**Network volume (reuse state):** Mount a RunPod network volume at **`/runpod-volume`**. On startup, [`runpod/entrypoint.sh`](../runpod/entrypoint.sh) sets `HF_HOME`, `TORCH_HOME`, `UV_CACHE_DIR`, and `XDG_CACHE_HOME` under `${RUNPOD_VOLUME_ROOT:-/runpod-volume}/cache/…` so Hugging Face models, tokens, and related caches survive new Pods using the same volume.
 
 3. **Expose port 80** so Traefik is reachable:
    - **TCP** exposure is preferred for **long-lived WebSockets** ([RunPod expose ports](https://docs.runpod.io/pods/configuration/expose-ports)); use the public **IP:port** from **Connect → Direct TCP Ports** and open `http://IP:PORT/` in the browser (mic may still want HTTPS — see below).
