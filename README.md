@@ -71,9 +71,10 @@ Defaults in that override: `KYUTAI_LLM_MODEL=mercury-2`, `KYUTAI_LLM_URL=https:/
 
 **RunPod checklist**
 
-- **HTTP(S)**: expose the pod **TCP port 80** (Traefik). For HTTPS and browser microphone access, terminate TLS in front of the pod (RunPod proxy, Caddy, nginx, etc.); plain HTTP only works cleanly for **localhost** in most browsers.
-- **Outbound**: the backend container must reach **`https://api.inceptionlabs.ai`** (egress allowed).
-- **Region**: pick a data center with stable egress; latency to Inception adds to **time-to-first-token** after STT.
+- **Pods vs Compose:** RunPod **Pods do not support Docker Compose** (single container per Pod). See **[docs/runpod-testing.md](docs/runpod-testing.md)** for how to test on RunPod anyway (single image, dockerless, or run Compose on a VM).
+- **HTTP(S) / WebSockets:** expose **TCP** for long-lived WebSockets when possible; the RunPod **HTTP proxy** has a **~100s** timeout path ([expose ports](https://docs.runpod.io/pods/configuration/expose-ports)). For mic access in browsers you still need **HTTPS** on the URL users open.
+- **Outbound:** the backend must reach **`https://api.inceptionlabs.ai`** (egress allowed).
+- **Region:** pick a data center with stable egress; latency to Inception adds to **time-to-first-token** after STT.
 
 ## Split topology (LLM on a second RunPod — self-hosted vLLM)
 
