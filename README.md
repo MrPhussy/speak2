@@ -93,6 +93,12 @@ uv run unmute/loadtest/loadtest_client.py --server-url ws://YOUR_HOST:MAPPED_POR
 
 Your fused TensorRT-LLM + TADA acoustic server (`native-gemma-tada` / `serve_gemma4_tada.py`) is **not** a drop-in replacement for Kyutai TTS in stock Unmute. Keeping Unmute’s **Kyutai STT + Kyutai TTS** with **Gemma 4 E2B as the text LLM** is the supported configuration here. Replacing LLM+TTS with a fused server would require a **custom adapter** for Unmute’s WebSocket TTS protocol.
 
+## Troubleshooting
+
+### Backend image build: `audiopus_sys` / CMake / Opus
+
+If `uv run` during the backend image build fails while compiling `sphn` with errors about **`audiopus_sys`** or **CMake < 3.5**, the Unmute `Dockerfile` in this submodule installs **`libopus-dev`** and **`pkg-config`** so the crate links system Opus instead of building an old bundled copy. Rebuild with a clean cache if needed: `docker compose ... build --no-cache backend`.
+
 ## References
 
 - [kyutai-labs/unmute](https://github.com/kyutai-labs/unmute)
