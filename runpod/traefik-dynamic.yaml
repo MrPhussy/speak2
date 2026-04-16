@@ -1,0 +1,31 @@
+http:
+  middlewares:
+    strip-api-prefix:
+      stripPrefix:
+        prefixes:
+          - /api
+
+  routers:
+    to-backend:
+      rule: PathPrefix(`/api`)
+      entryPoints: [web]
+      middlewares: [strip-api-prefix]
+      service: backend-svc
+      priority: 100
+
+    to-frontend:
+      rule: PathPrefix(`/`)
+      entryPoints: [web]
+      service: frontend-svc
+      priority: 10
+
+  services:
+    backend-svc:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:8088"
+
+    frontend-svc:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:3000"

@@ -6,6 +6,8 @@ This directory vendors [kyutai-labs/unmute](https://github.com/kyutai-labs/unmut
 - **Split LLM**: STT + TTS + backend + frontend on one deployment, while the LLM runs on another host (self-hosted vLLM, second RunPod, etc.).
 - **External LLM (Inception Mercury 2)**: same as split (no local `llm` container); backend calls [Inception’s OpenAI-compatible API](https://docs.inceptionlabs.ai/get-started/get-started) ([Mercury 2 announcement](https://www.inceptionlabs.ai/blog/introducing-mercury-2)).
 
+**RunPod:** use the **single image** [`Dockerfile.runpod-allinone`](Dockerfile.runpod-allinone) — see **[docs/runpod-testing.md](docs/runpod-testing.md)** for build, push, and Pod settings (Compose is **not** supported inside RunPod Pods).
+
 Canonical path on this machine: **`/home/phil/workspace/speak2`**. If you use `/workspace/speak2` in docs or CI, create a symlink (requires a writable `/workspace`):
 
 ```bash
@@ -14,7 +16,7 @@ sudo mkdir -p /workspace && sudo ln -sfn /home/phil/workspace/speak2 /workspace/
 
 ## Prerequisites
 
-- **x86_64 Linux** with NVIDIA driver + [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
+- **Linux** (x86_64 or arm64) with NVIDIA driver + [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) for local Docker builds.
 - **VRAM**: With an **external** LLM (Inception Mercury, OpenAI, OpenRouter, etc.), the GPU only runs **Kyutai STT + TTS** (order-of-magnitude **~8GB+** VRAM combined—use **16GB+** for comfort). With **local Gemma 4 E2B**, Unmute’s single-GPU target is tighter (**32GB+** practical). Always confirm with `nvidia-smi` under load.
 - **Hugging Face**: Accept model license(s) on the HF hub and set `HUGGING_FACE_HUB_TOKEN` (read-only token for deployment).
 
@@ -26,6 +28,8 @@ sudo mkdir -p /workspace && sudo ln -sfn /home/phil/workspace/speak2 /workspace/
 | [`compose/docker-compose.runpod.single-gpu.yml`](compose/docker-compose.runpod.single-gpu.yml) | Override: `vllm/vllm-openai:gemma4`, Gemma 4 E2B-it, text-only limits |
 | [`compose/docker-compose.runpod.split-llm.yml`](compose/docker-compose.runpod.split-llm.yml) | Override: disable local `llm` by default; set `KYUTAI_LLM_URL` / model / API key for any external OpenAI-compatible host |
 | [`compose/docker-compose.runpod.inception-mercury.yml`](compose/docker-compose.runpod.inception-mercury.yml) | Same, with defaults for **Inception** `https://api.inceptionlabs.ai` + model `mercury-2` |
+| [`Dockerfile.runpod-allinone`](Dockerfile.runpod-allinone) | **One image** for RunPod: Traefik + frontend + backend + STT + TTS ([guide](docs/runpod-testing.md)) |
+| [`runpod/`](runpod/) | Traefik static config, supervisord, entrypoint scripts |
 | [`env.example`](env.example) | Copy to `.env` |
 
 ## Quick start (single GPU)

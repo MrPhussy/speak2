@@ -1,98 +1,91 @@
-# Deploying speak2 / Unmute on RunPod for testing
+# Deploying speak2 / Unmute on RunPod
 
 RunPod **Pods** are **one container per deployment**. Official docs state you **cannot** run your own Docker daemon or **Docker Compose** inside a Pod ([Pod limitations — *Docker Compose is not supported*](https://docs.runpod.io/pods/overview)).
 
-So the **same** `docker compose -f unmute/docker-compose.yml -f compose/...` flow you use on Spark or a dev box is **not** something you paste into a standard RunPod Pod start command.
-
-Below are **workable** ways to get “functional on RunPod” for testing, in order of practicality.
+The multi-file Compose flow under `compose/` is for **Docker hosts** (e.g. DGX Spark). For **RunPod Pods**, use the **single all-in-one image** in this repo.
 
 ---
 
-## Option 1 — Keep Compose off RunPod (simplest)
+## Single image (default for RunPod)
 
-- Run the **full stack** (Compose + Inception override) on **any Linux host with Docker + NVIDIA** (e.g. your DGX Spark, a dev machine, or a **GPU VM** from a provider that gives you a real VM with Docker).
-- Use RunPod only for **GPU inference** later (e.g. a separate endpoint), if that fits your product split.
+[`Dockerfile.runpod-allinone`](../Dockerfile.runpod-allinone) bundles:
 
-This avoids fighting the single-container model.
+- **Traefik** (file provider — no Docker socket) on **:80**
+- **Next.js** frontend (production `standalone` build) on **:3000** (internal)
+- **Unmute FastAPI** backend on **:8088** (internal)
+- **Kyutai STT** (`moshi-server`) on **:8091** (internal)
+- **Kyutai TTS** on **:8092** (internal)
 
----
+Process manager: **supervisord** ([`runpod/supervisord.conf`](../runpod/supervisord.conf)). Entrypoint: [`runpod/entrypoint.sh`](../runpod/entrypoint.sh) (HF login + env defaults for Inception Mercury).
 
-## Option 2 — RunPod Pod + **one** custom image (recommended if the UI must be on RunPod)
+### Build and push
 
-Package **Traefik + frontend + backend + STT + TTS** into **one** Docker image with a process supervisor (`supervisord`, `s6-overlay`, or a small `bash` launcher that starts all processes and `wait`).
+From the **speak2** repo root (with `unmute/` submodule populated):
 
-- **Build** on CI or locally: `docker build -t ghcr.io/yourorg/speak2-voice:tag -f Dockerfile.runpod-allinone .`
-- **Push** to GHCR / Docker Hub.
-- In [RunPod console](https://www.console.runpod.io/pods), deploy a Pod with that image, GPU type (**16GB+** VRAM for STT+TTS is a reasonable test floor), and environment variables (see below).
+```bash
+docker build -f Dockerfile.runpod-allinone -t YOUR_REGISTRY/speak2-unmute:runpod .
+docker push YOUR_REGISTRY/speak2-unmute:runpod
+```
 
-This repo **does not** ship `Dockerfile.runpod-allinone` yet; it is the straightforward way to align with RunPod’s model.
+Use a registry RunPod can pull from (Docker Hub, GHCR, ECR, etc.).
 
----
+### RunPod Pod (test today)
 
-## Option 3 — RunPod Pod + **dockerless** (no Docker; one container, many processes)
+1. [Deploy a Pod](https://docs.runpod.io/pods/overview) with image `YOUR_REGISTRY/speak2-unmute:runpod`, **GPU** (16GB+ VRAM recommended for STT+TTS), and **HTTP or TCP** exposure on container port **80**.
+2. Set **environment variables** (Pod → Edit → Environment):
 
-Upstream Unmute documents [running without Docker](https://github.com/kyutai-labs/unmute#running-without-docker): `uv`, `cargo`, `pnpm`, CUDA, then `./dockerless/start_*.sh` in separate terminals.
+| Name | Example | Required |
+|------|---------|----------|
+| `HUGGING_FACE_HUB_TOKEN` | `hf_…` | Yes |
+| `KYUTAI_LLM_API_KEY` | Inception key | Yes for Mercury |
+| `KYUTAI_LLM_URL` | `https://api.inceptionlabs.ai` | Optional (default) |
+| `KYUTAI_LLM_MODEL` | `mercury-2` | Optional (default) |
+| `KYUTAI_STT_URL` | `ws://127.0.0.1:8091` | Optional (default) |
+| `KYUTAI_TTS_URL` | `ws://127.0.0.1:8092` | Optional (default) |
+| `UV_LINK_MODE` | `copy` | Optional (helps some volume backends) |
 
-On a RunPod Pod you can **SSH** in and run the same **if** your template has CUDA, build tools, and HF auth configured. You must:
+3. **Expose port 80** so Traefik is reachable:
+   - **TCP** exposure is preferred for **long-lived WebSockets** ([RunPod expose ports](https://docs.runpod.io/pods/configuration/expose-ports)); use the public **IP:port** from **Connect → Direct TCP Ports** and open `http://IP:PORT/` in the browser (mic may still want HTTPS — see below).
+   - **HTTP proxy** (`https://[POD_ID]-80.proxy.runpod.net`) gives HTTPS but has a **~100s** Cloudflare timeout path; try it for quick UI tests, fall back to **TCP** if WebSockets drop.
 
-- Install dependencies per Unmute README (Linux/WSL path).
-- Export the same env vars you use in `.env` (`HUGGING_FACE_HUB_TOKEN`, `KYUTAI_LLM_*`, etc.).
-- Point the **frontend** at the **backend** URL users will actually open (RunPod proxy/TCP — see below).
-- **Skip** `start_llm.sh` when using Inception: set `KYUTAI_LLM_URL` / `KYUTAI_LLM_MODEL` / `KYUTAI_LLM_API_KEY` for the backend process.
+4. Wait for **first boot**: Kyutai may download models on first STT/TTS start (several minutes). Watch **Logs** until Traefik answers on `/`.
 
-**Caveat:** dockerless defaults (ports, no Traefik) differ from Compose; you will align ports and reverse-proxy yourself. This is viable for a **manual** test, not a one-click template, unless you script it.
+5. **Healthcheck**: image `HEALTHCHECK` curls `http://127.0.0.1:80/`; allow several minutes before the Pod shows healthy.
 
----
+### RunPod Serverless (later)
 
-## Networking on RunPod (important for Unmute)
+Serverless workers are still **one container** per worker; this image is compatible **in principle** once you validate on a Pod. You will likely need a **load-balancing** or **custom HTTP** endpoint type, correct **idle/execution timeouts**, and possibly a wrapper if RunPod expects a specific `CMD` — adapt after Pod testing. See [Serverless overview](https://docs.runpod.io/serverless/overview).
 
-### WebSockets and timeouts
+### Asterisk / FreePBX (later)
 
-Unmute relies on **WebSockets** (browser ↔ backend, backend ↔ STT/TTS). RunPod’s **HTTP proxy** terminates through Cloudflare with a **~100 second** timeout on slow responses ([proxy limitations](https://docs.runpod.io/pods/configuration/expose-ports#proxy-limitations-and-behavior)). Long silent periods or very slow first bytes can cause **524**-class issues.
-
-RunPod recommends **TCP port exposure** for **WebSocket** workloads that need persistent connections ([WebSocket applications](https://docs.runpod.io/pods/configuration/expose-ports#common-use-cases)).
-
-**Practical test setup:**
-
-1. In the Pod / template, enable **Expose TCP Ports** and map to the port your **edge** listens on (with Compose that is usually **80** for Traefik, or **8000** if you only expose the backend in a custom image).
-2. Use the **public IP:port** from the Pod **Connect** panel ([TCP access](https://docs.runpod.io/pods/configuration/expose-ports#tcp-access-via-public-ip)).
-3. For **HTTPS** in the browser (needed for **microphone** access on non-localhost), the HTTP proxy gives you `https://[POD_ID]-[PORT].proxy.runpod.net` — test whether your WebSocket path stays under proxy limits; if not, terminate TLS yourself on TCP or use a small external reverse proxy.
-
-### Bind address
-
-Anything you expose must listen on **`0.0.0.0`**, not `127.0.0.1` ([RunPod troubleshooting](https://docs.runpod.io/pods/configuration/expose-ports#troubleshooting)).
-
----
-
-## Environment variables on RunPod
-
-Set in the Pod / template UI (or template env), mirroring your `.env`:
-
-| Variable | Purpose |
-|----------|---------|
-| `HUGGING_FACE_HUB_TOKEN` | HF read token for Kyutai model download |
-| `KYUTAI_LLM_API_KEY` | Inception (or other) API key |
-| `KYUTAI_LLM_URL` | For Inception: `https://api.inceptionlabs.ai` (**no** `/v1`) |
-| `KYUTAI_LLM_MODEL` | e.g. `mercury-2` |
-| `NEWSAPI_API_KEY` | Optional |
-
-Never commit real keys; use RunPod secrets / env UI only.
+RunPod Pods **do not support UDP** ([Pod limitations](https://docs.runpod.io/pods/overview)). SIP/RTP toward Asterisk usually needs **UDP** or a **gateway** outside RunPod (e.g. Kamailio, cloud SBC, or TCP/TLS SIP). Plan telephony as a **separate** network hop from this HTTP/WebSocket voice UI.
 
 ---
 
-## Egress
+## Option — Compose on a non-RunPod Docker host
 
-The **backend** container (or process) must reach **`https://api.inceptionlabs.ai`** for Mercury. RunPod Pods normally allow HTTPS egress; if something fails, check firewall / template restrictions.
+Use `docker compose -f unmute/docker-compose.yml -f compose/docker-compose.runpod.inception-mercury.yml` on any Linux machine with Docker + NVIDIA (e.g. Spark). Same stack, different hosting model.
+
+---
+
+## Option — dockerless (manual, one container)
+
+Upstream [Unmute without Docker](https://github.com/kyutai-labs/unmute#running-without-docker). Possible on a Pod via SSH if you install all deps yourself; ports differ from the all-in-one image — use only if you are debugging outside the Dockerfile.
+
+---
+
+## Networking reference
+
+- **Bind** services on `0.0.0.0` (this image does).
+- **WebSockets**: prefer **TCP** exposure when sessions are long ([RunPod guidance](https://docs.runpod.io/pods/configuration/expose-ports#common-use-cases)).
+- **Egress**: backend must reach your LLM host (e.g. `https://api.inceptionlabs.ai`).
 
 ---
 
 ## Summary
 
-| Approach | Fits RunPod Pod? |
-|----------|------------------|
-| `docker compose …` (current speak2 flow) | **No** (not supported on Pods) |
-| Single custom image + supervisor | **Yes** |
-| dockerless + SSH + manual processes | **Yes** (manual) |
-| GPU VM elsewhere + Compose | **Yes** |
-
-If you want **Option 2** implemented in-repo (`Dockerfile.runpod-allinone` + build instructions), say so in Agent mode and we can add it incrementally.
+| Approach | RunPod Pod |
+|----------|------------|
+| `docker compose …` | **Not supported** inside Pod |
+| **`Dockerfile.runpod-allinone`** | **Yes** (this repo) |
+| dockerless by hand | **Yes** (manual) |

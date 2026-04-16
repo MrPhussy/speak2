@@ -1,0 +1,7 @@
+.git
+**/node_modules
+**/.venv
+unmute/volumes
+**/__pycache__
+**/.next
+*.pyc
