@@ -1,3 +1,4 @@
 [submodule "unmute"]
 	path = unmute
-	url = https://github.com/kyutai-labs/unmute.git
+	# Fork carries local patches (Opus/Traefik/hf login) until upstream merges them.
+	url = https://github.com/MrPhussy/unmute.git
