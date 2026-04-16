@@ -1,0 +1,27 @@
+# Run from the speak2 repo root:
+#   docker compose -f unmute/docker-compose.yml -f compose/docker-compose.runpod.single-gpu.yml --env-file .env up --build
+#
+# Targets one GPU shared by Kyutai STT/TTS and vLLM (Gemma 4 E2B text-only).
+# Prefer 32GB+ VRAM; validate with nvidia-smi under load.
+
+services:
+  backend:
+    environment:
+      KYUTAI_LLM_MODEL: google/gemma-4-E2B-it
+      KYUTAI_LLM_API_KEY: ${KYUTAI_LLM_API_KEY:-EMPTY}
+
+  llm:
+    image: vllm/vllm-openai:gemma4
+    ipc: host
+    shm_size: "16g"
+    command:
+      - "--model=google/gemma-4-E2B-it"
+      - "--max-model-len=8192"
+      - "--dtype=bfloat16"
+      # Leave headroom for Kyutai STT (~2.5GB) + TTS (~5.3GB) on the same GPU.
+      - "--gpu-memory-utilization=0.32"
+      # Text-only: skip vision/audio encoder memory (mic audio still goes to Kyutai STT).
+      - "--limit-mm-per-prompt"
+      - "image=0,audio=0"
+      - "--host=0.0.0.0"
+      - "--port=8000"

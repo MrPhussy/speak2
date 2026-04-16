@@ -1,0 +1,21 @@
+# Voice stack (Traefik + frontend + backend + STT + TTS) without a local vLLM container.
+# Point KYUTAI_LLM_URL at a separate RunPod (or any host) serving OpenAI-compatible vLLM.
+#
+# Run from the speak2 repo root:
+#   export KYUTAI_LLM_URL=http://YOUR_VLLM_HOST:8000   # no /v1 suffix; backend appends /v1
+#   docker compose -f unmute/docker-compose.yml -f compose/docker-compose.runpod.split-llm.yml --env-file .env up --build
+#
+# RunPod: place both pods in the same region; use pod-to-pod / global networking internal DNS
+# when available (see README). Use HTTPS + auth in production.
+
+services:
+  llm:
+    # Local vLLM is opt-in for this topology; do not pass --profile speak2-local-llm.
+    profiles:
+      - speak2-local-llm
+
+  backend:
+    environment:
+      KYUTAI_LLM_URL: ${KYUTAI_LLM_URL:?Set KYUTAI_LLM_URL to your external vLLM base, e.g. http://10.x.x.x:8000}
+      KYUTAI_LLM_MODEL: ${KYUTAI_LLM_MODEL:-google/gemma-4-E2B-it}
+      KYUTAI_LLM_API_KEY: ${KYUTAI_LLM_API_KEY:-EMPTY}
