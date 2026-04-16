@@ -32,9 +32,21 @@ RUN pnpm run build
 # -----------------------------------------------------------------------------
 FROM nvidia/cuda:12.8.1-devel-ubuntu22.04 AS backend-builder
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates libopus-dev pkg-config \
-    && rm -rf /var/lib/apt/lists/*
+# Flaky mirrors / Docker Desktop proxies sometimes return HTTP 400 on pipelined apt requests.
+RUN set -eux; \
+    printf '%s\n' \
+      'Acquire::Retries "10";' \
+      'Acquire::http::Pipeline-Depth "0";' \
+      'Acquire::http::Timeout "120";' \
+      'Acquire::https::Timeout "120";' \
+      > /etc/apt/apt.conf.d/99docker; \
+    ok=0; for attempt in 1 2 3 4 5; do \
+      if apt-get update && apt-get install -y --no-install-recommends \
+        curl ca-certificates libopus-dev pkg-config; then ok=1; break; fi; \
+      echo "apt retry $attempt"; sleep "$((attempt * 10))"; \
+    done; \
+    [ "$ok" -eq 1 ]; \
+    rm -rf /var/lib/apt/lists/*
 # Debian-based uv image ships binaries under /usr/local/bin (not /uv at root like distroless tags).
 COPY --from=ghcr.io/astral-sh/uv:0.6.17-debian /usr/local/bin/uv /usr/local/bin/uv
 COPY --from=ghcr.io/astral-sh/uv:0.6.17-debian /usr/local/bin/uvx /usr/local/bin/uvx
@@ -59,10 +71,21 @@ ARG CUDA_COMPUTE_CAP=120
 ENV CUDA_COMPUTE_CAP=${CUDA_COMPUTE_CAP}
 ENV DEBIAN_FRONTEND=noninteractive
 ENV CXXFLAGS="-include cstdint"
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl build-essential ca-certificates libssl-dev libopus-dev git \
-    pkg-config cmake wget dos2unix \
-    && rm -rf /var/lib/apt/lists/*
+RUN set -eux; \
+    printf '%s\n' \
+      'Acquire::Retries "10";' \
+      'Acquire::http::Pipeline-Depth "0";' \
+      'Acquire::http::Timeout "120";' \
+      'Acquire::https::Timeout "120";' \
+      > /etc/apt/apt.conf.d/99docker; \
+    ok=0; for attempt in 1 2 3 4 5; do \
+      if apt-get update && apt-get install -y --no-install-recommends \
+        curl build-essential ca-certificates libssl-dev libopus-dev git \
+        pkg-config cmake wget dos2unix; then ok=1; break; fi; \
+      echo "apt retry $attempt"; sleep "$((attempt * 10))"; \
+    done; \
+    [ "$ok" -eq 1 ]; \
+    rm -rf /var/lib/apt/lists/*
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 ENV PATH=/root/.cargo/bin:${PATH}
 COPY --from=ghcr.io/astral-sh/uv:0.7.2 /uv /usr/local/bin/uv
@@ -87,10 +110,21 @@ RUN uv python install 3.12 \
 FROM nvidia/cuda:12.8.1-devel-ubuntu22.04 AS runtime
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl supervisor ffmpeg \
-    libopus0 \
-    && rm -rf /var/lib/apt/lists/*
+RUN set -eux; \
+    printf '%s\n' \
+      'Acquire::Retries "10";' \
+      'Acquire::http::Pipeline-Depth "0";' \
+      'Acquire::http::Timeout "120";' \
+      'Acquire::https::Timeout "120";' \
+      > /etc/apt/apt.conf.d/99docker; \
+    ok=0; for attempt in 1 2 3 4 5; do \
+      if apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates curl supervisor ffmpeg \
+        libopus0; then ok=1; break; fi; \
+      echo "apt retry $attempt"; sleep "$((attempt * 10))"; \
+    done; \
+    [ "$ok" -eq 1 ]; \
+    rm -rf /var/lib/apt/lists/*
 
 # Traefik static binary (amd64 / arm64)
 ARG TARGETARCH
