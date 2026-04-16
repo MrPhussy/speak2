@@ -1,0 +1,28 @@
+# Voice stack on RunPod (or any host) with NO local vLLM — LLM is Inception Mercury 2
+# (OpenAI-compatible API). See: https://www.inceptionlabs.ai/blog/introducing-mercury-2
+# API reference: https://docs.inceptionlabs.ai/get-started/get-started
+#
+# IMPORTANT: KYUTAI_LLM_URL must be the API ORIGIN only (no /v1). Unmute appends /v1
+# internally (unmute/llm/llm_utils.py → base_url = KYUTAI_LLM_URL + "/v1").
+#   Correct:   https://api.inceptionlabs.ai
+#   Wrong:     https://api.inceptionlabs.ai/v1
+#
+# Run from speak2 repo root:
+#   cp env.example .env
+#   # Set HUGGING_FACE_HUB_TOKEN and KYUTAI_LLM_API_KEY (Inception key from platform dashboard)
+#   docker compose -f unmute/docker-compose.yml -f compose/docker-compose.runpod.inception-mercury.yml --env-file .env up --build
+#
+# Optional: override model or endpoint
+#   KYUTAI_LLM_MODEL=mercury-2
+#   KYUTAI_LLM_URL=https://api.inceptionlabs.ai
+
+services:
+  llm:
+    profiles:
+      - speak2-local-llm
+
+  backend:
+    environment:
+      KYUTAI_LLM_URL: ${KYUTAI_LLM_URL:-https://api.inceptionlabs.ai}
+      KYUTAI_LLM_MODEL: ${KYUTAI_LLM_MODEL:-mercury-2}
+      KYUTAI_LLM_API_KEY: ${KYUTAI_LLM_API_KEY:?Set KYUTAI_LLM_API_KEY to your Inception API key (https://platform.inceptionlabs.ai/dashboard/api-keys)}
