@@ -97,7 +97,11 @@ Your fused TensorRT-LLM + TADA acoustic server (`native-gemma-tada` / `serve_gem
 
 ### Backend image build: `audiopus_sys` / CMake / Opus
 
-If `uv run` during the backend image build fails while compiling `sphn` with errors about **`audiopus_sys`** or **CMake < 3.5**, the Unmute `Dockerfile` in this submodule installs **`libopus-dev`** and **`pkg-config`** so the crate links system Opus instead of building an old bundled copy. Rebuild with a clean cache if needed: `docker compose ... build --no-cache backend`.
+If `uv run` during the backend image build fails while compiling `sphn` with errors about **`audiopus_sys`** or **CMake < 3.5**, the Unmute `Dockerfile` in this submodule installs **`libopus-dev`** and **`pkg-config`** so the crate links system Opus instead of building an old bundled copy. The same dependency is added to **`services/moshi-server/public.Dockerfile`** so **STT/TTS** (`moshi-server`) does not hit the same failure at runtime. Rebuild with a clean cache if needed: `docker compose ... build --no-cache backend stt tts`.
+
+### Traefik: `client version 1.24 is too old` (Docker API 1.44)
+
+Docker Engine 29+ requires API **1.44+**. Traefik **v3.3.x** used an older client. This repo’s submodule pins **`traefik:v3.6.6`**, which negotiates a compatible API. Re-pull after `git submodule update`: `docker compose ... pull traefik`.
 
 ## References
 
