@@ -23,9 +23,15 @@ Process manager: **supervisord** ([`runpod/supervisord.conf`](../runpod/supervis
 From the **speak2** repo root (with `unmute/` submodule populated):
 
 ```bash
-docker build -f Dockerfile.runpod-allinone -t YOUR_REGISTRY/speak2-unmute:runpod .
+docker build --platform linux/amd64 -f Dockerfile.runpod-allinone \
+  --build-arg CUDA_COMPUTE_CAP=120 \
+  -t YOUR_REGISTRY/speak2-unmute:runpod .
 docker push YOUR_REGISTRY/speak2-unmute:runpod
 ```
+
+Or: **`./scripts/docker-build-push-runpod.sh`** (same defaults; requires **native x86_64** Docker — builds that use QEMU on ARM often fail during the moshi Rust step).
+
+**CI:** GitHub Actions workflow **Docker RunPod image** (`.github/workflows/docker-runpod-image.yml`) builds **linux/amd64** on `ubuntu-latest` and pushes to Docker Hub. Add repo secrets **`DOCKERHUB_USERNAME`** and **`DOCKERHUB_TOKEN`**, then **Actions → Run workflow**.
 
 Use a registry RunPod can pull from (Docker Hub, GHCR, ECR, etc.).
 

@@ -1,0 +1,41 @@
+# Build linux/amd64 speak2-unmute image on GitHub (native amd64) and push to Docker Hub.
+# Repo → Settings → Secrets and variables → Actions:
+#   DOCKERHUB_USERNAME, DOCKERHUB_TOKEN (Docker Hub access token)
+#
+# Run: Actions → "Docker RunPod image" → Run workflow
+
+name: Docker RunPod image
+
+on:
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: osophy/speak2-unmute:runpod
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.runpod-allinone
+          platforms: linux/amd64
+          build-args: |
+            CUDA_COMPUTE_CAP=120
+          push: true
+          tags: ${{ env.IMAGE_NAME }}
