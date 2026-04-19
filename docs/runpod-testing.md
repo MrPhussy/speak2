@@ -29,7 +29,7 @@ docker build --platform linux/amd64 -f Dockerfile.runpod-allinone \
 docker push YOUR_REGISTRY/speak2-unmute:runpod
 ```
 
-Or: **`./scripts/docker-build-push-runpod.sh`** (same defaults; requires **native x86_64** Docker — builds that use QEMU on ARM often fail during the moshi Rust step).
+Or: **`./scripts/docker-build-push-runpod.sh`** (same defaults; requires **native x86_64** Docker — builds that use QEMU on ARM often fail during the moshi Rust step, e.g. `rustc`/`qemu` SIGSEGV under `--platform linux/amd64`). Use **[`.github/workflows/docker-runpod-image.yml`](../.github/workflows/docker-runpod-image.yml)** (Actions → Run workflow) to build on **ubuntu-latest** and push when local cross-build is unreliable.
 
 **CI:** GitHub Actions workflow **Docker RunPod image** (`.github/workflows/docker-runpod-image.yml`) builds **linux/amd64** on `ubuntu-latest` and pushes to Docker Hub. Add repo secrets **`DOCKERHUB_USERNAME`** and **`DOCKERHUB_TOKEN`**, then **Actions → Run workflow**.
 
@@ -65,6 +65,8 @@ Use a registry RunPod can pull from (Docker Hub, GHCR, ECR, etc.).
 ### RunPod Serverless (later)
 
 Serverless workers are still **one container** per worker; this image is compatible **in principle** once you validate on a Pod. You will likely need a **load-balancing** or **custom HTTP** endpoint type, correct **idle/execution timeouts**, and possibly a wrapper if RunPod expects a specific `CMD` — adapt after Pod testing. See [Serverless overview](https://docs.runpod.io/serverless/overview).
+
+REST helper (template + endpoint with **FlashBoot**): [`scripts/runpod_unmute_rest.py`](../scripts/runpod_unmute_rest.py) — set `RUNPOD_API_KEY`, `RUNPOD_IMAGE_NAME`, and LLM/HF env vars as needed. Optional HTTP check: [`scripts/runpod_unmute_smoke.sh`](../scripts/runpod_unmute_smoke.sh) with `RUNPOD_UNMUTE_URL`.
 
 ### Asterisk / FreePBX (later)
 

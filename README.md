@@ -29,6 +29,9 @@ sudo mkdir -p /workspace && sudo ln -sfn /home/phil/workspace/speak2 /workspace/
 | [`compose/docker-compose.runpod.split-llm.yml`](compose/docker-compose.runpod.split-llm.yml) | Override: disable local `llm` by default; set `KYUTAI_LLM_URL` / model / API key for any external OpenAI-compatible host |
 | [`compose/docker-compose.runpod.inception-mercury.yml`](compose/docker-compose.runpod.inception-mercury.yml) | Same, with defaults for **Inception** `https://api.inceptionlabs.ai` + model `mercury-2` |
 | [`Dockerfile.runpod-allinone`](Dockerfile.runpod-allinone) | **One image** for RunPod: Traefik + frontend + backend + STT + TTS ([guide](docs/runpod-testing.md)) |
+| [`scripts/runpod_unmute_rest.py`](scripts/runpod_unmute_rest.py) | Optional: RunPod **Serverless** template + endpoint (**FlashBoot**) for this image |
+| [`deploy/asterisk/extensions_custom_fjord_parallel_test.conf.example`](deploy/asterisk/extensions_custom_fjord_parallel_test.conf.example) | Example DID → `AGENT_MODE` for VEXYL + SpacetimeDB routing |
+| [`docs/VEXYL_PARALLEL_MODES.md`](docs/VEXYL_PARALLEL_MODES.md) | Env vars: **S2S Gateway** (xAI) vs **CASCADE** (Unmute URL) |
 | [`runpod/`](runpod/) | Traefik static config, supervisord, entrypoint scripts |
 | [`env.example`](env.example) | Copy to `.env` |
 

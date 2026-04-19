@@ -1,0 +1,17 @@
+; Parallel S2S vs CASCADE testing (Fjord Telecom) — copy into /etc/asterisk/extensions_custom.conf
+; or include from extensions.conf. Adjust AudioSocket host/port to your VEXYL listener.
+;
+; DID keys must match SpacetimeDB `call_routing.did` rows (see mneme call-routing-core).
+
+[from-fjord-telecom]
+; TEST 1: NATIVE S2S (full duplex via xAI Realtime — VEXYL reads AGENT_MODE / STDB)
+exten => 442030000111,1,Answer()
+ same => n,Set(AGENT_MODE=S2S_GATEWAY)
+ same => n,AudioSocket(${UNIQUEID},127.0.0.1:9092)
+ same => n,Hangup()
+
+; TEST 2: CASCADED (Unmute / Kyutai STT → LLM → Kyutai TTS on RunPod — VEXYL routes to Traefik :80)
+exten => 442030000222,1,Answer()
+ same => n,Set(AGENT_MODE=CASCADE)
+ same => n,AudioSocket(${UNIQUEID},127.0.0.1:9092)
+ same => n,Hangup()
