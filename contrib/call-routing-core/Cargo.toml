@@ -1,0 +1,16 @@
+[package]
+name = "call-routing-core"
+version = "0.1.0"
+edition = "2021"
+description = "SpacetimeDB module: DID → voice mode (S2S_GATEWAY vs CASCADE) for VEXYL routing"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+spacetimedb = "2.1"
+
+# Root workspace so `cargo` / `spacetime build` here does not walk up to unrelated parent workspaces.
+[workspace]
+resolver = "2"
+members = ["."]

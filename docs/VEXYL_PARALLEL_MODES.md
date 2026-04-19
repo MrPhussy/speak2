@@ -2,7 +2,7 @@
 
 Use this together with:
 
-- SpacetimeDB [`call-routing-core`](../../mneme/crates/call-routing-core) (DID → `S2S_GATEWAY` | `CASCADE`)
+- SpacetimeDB [`contrib/call-routing-core`](../contrib/call-routing-core) (DID → `S2S_GATEWAY` | `CASCADE`; see [`docs/CALL_ROUTING_SPACETIME.md`](CALL_ROUTING_SPACETIME.md))
 - Asterisk example: [`deploy/asterisk/extensions_custom_fjord_parallel_test.conf.example`](../deploy/asterisk/extensions_custom_fjord_parallel_test.conf.example)
 - RunPod Unmute image: [`Dockerfile.runpod-allinone`](../Dockerfile.runpod-allinone), [`docs/runpod-testing.md`](runpod-testing.md)
 

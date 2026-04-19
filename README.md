@@ -32,6 +32,7 @@ sudo mkdir -p /workspace && sudo ln -sfn /home/phil/workspace/speak2 /workspace/
 | [`scripts/runpod_unmute_rest.py`](scripts/runpod_unmute_rest.py) | Optional: RunPod **Serverless** template + endpoint (**FlashBoot**) for this image |
 | [`deploy/asterisk/extensions_custom_fjord_parallel_test.conf.example`](deploy/asterisk/extensions_custom_fjord_parallel_test.conf.example) | Example DID → `AGENT_MODE` for VEXYL + SpacetimeDB routing |
 | [`docs/VEXYL_PARALLEL_MODES.md`](docs/VEXYL_PARALLEL_MODES.md) | Env vars: **S2S Gateway** (xAI) vs **CASCADE** (Unmute URL) |
+| [`contrib/call-routing-core`](contrib/call-routing-core) | SpacetimeDB WASM module: DID → mode ([`docs/CALL_ROUTING_SPACETIME.md`](docs/CALL_ROUTING_SPACETIME.md)) |
 | [`runpod/`](runpod/) | Traefik static config, supervisord, entrypoint scripts |
 | [`env.example`](env.example) | Copy to `.env` |
 

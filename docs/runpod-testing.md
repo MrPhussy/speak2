@@ -68,6 +68,8 @@ Serverless workers are still **one container** per worker; this image is compati
 
 REST helper (template + endpoint with **FlashBoot**): [`scripts/runpod_unmute_rest.py`](../scripts/runpod_unmute_rest.py) — set `RUNPOD_API_KEY`, `RUNPOD_IMAGE_NAME`, and LLM/HF env vars as needed. Optional HTTP check: [`scripts/runpod_unmute_smoke.sh`](../scripts/runpod_unmute_smoke.sh) with `RUNPOD_UNMUTE_URL`.
 
+SpacetimeDB **DID → mode** module (VEXYL): [`contrib/call-routing-core`](../contrib/call-routing-core), runbook [`docs/CALL_ROUTING_SPACETIME.md`](CALL_ROUTING_SPACETIME.md).
+
 ### Asterisk / FreePBX (later)
 
 RunPod Pods **do not support UDP** ([Pod limitations](https://docs.runpod.io/pods/overview)). SIP/RTP toward Asterisk usually needs **UDP** or a **gateway** outside RunPod (e.g. Kamailio, cloud SBC, or TCP/TLS SIP). Plan telephony as a **separate** network hop from this HTTP/WebSocket voice UI.
