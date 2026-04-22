@@ -5,8 +5,9 @@ RunPod REST helpers: create a Serverless worker template + GPU endpoint for **sp
 
 Requires ``RUNPOD_API_KEY``. Uses ``https://rest.runpod.io/v1``.
 
-This sets **flashboot: true** on the endpoint (same idea as Speak CleanS2S). Tune **CUDA** strings
-to match your GPU lines in the RunPod UI if the API rejects them.
+This sets **flashboot: true** on the endpoint. Default **executionTimeoutMs** is 600000 (10m) for
+cold start + HF downloads. Default GPU is **NVIDIA RTX PRO 4500 Blackwell**; override **RUNPOD_GPU_TYPE**
+if the API lags the [GPU types](https://docs.runpod.io/references/gpu-types) list.
 """
 from __future__ import annotations
 
@@ -20,9 +21,12 @@ from typing import Any
 
 API_BASE = os.environ.get("RUNPOD_REST_URL", "https://rest.runpod.io/v1").rstrip("/")
 
+# RunPod GPU type id (see https://docs.runpod.io/references/gpu-types ). For RTX PRO 4500 Blackwell use:
+#   NVIDIA RTX PRO 4500 Blackwell
+# If the REST API rejects a newly listed GPU, create the endpoint in the console or temporarily set RUNPOD_GPU_TYPE.
 DEFAULT_GPU = os.environ.get(
     "RUNPOD_GPU_TYPE",
-    "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+    "NVIDIA RTX PRO 4500 Blackwell",
 )
 # Traefik serves Metis/Unmute UI on 80 inside the container.
 DEFAULT_PORTS = ["80/http"]
@@ -128,9 +132,13 @@ def cmd_create_endpoint(ns: argparse.Namespace) -> None:
         "minCudaVersion": min_cuda,
         "dataCenterIds": data_center_ids,
         "idleTimeout": ns.idle_timeout,
+        "executionTimeoutMs": ns.execution_timeout_ms,
         "scalerType": "QUEUE_DELAY",
         "scalerValue": ns.scaler_value,
     }
+    nvid = (ns.network_volume_id or os.environ.get("RUNPOD_NETWORK_VOLUME_ID", "")).strip()
+    if nvid:
+        body["networkVolumeId"] = nvid
     out = _request("POST", "/endpoints", body)
     print(json.dumps(out, indent=2))
 
@@ -153,8 +161,10 @@ def cmd_create_all(ns: argparse.Namespace) -> None:
         workers_min=ns.workers_min,
         workers_max=ns.workers_max,
         idle_timeout=ns.idle_timeout,
+        execution_timeout_ms=ns.execution_timeout_ms,
         scaler_value=ns.scaler_value,
         data_centers=ns.data_centers,
+        network_volume_id=ns.network_volume_id,
     )
     cmd_create_endpoint(e_ns)
 
@@ -178,6 +188,12 @@ def main() -> None:
     e.add_argument("--workers-max", type=int, default=int(os.environ.get("RUNPOD_WORKERS_MAX", "3")))
     e.add_argument("--idle-timeout", type=int, default=int(os.environ.get("RUNPOD_IDLE_TIMEOUT", "300")))
     e.add_argument(
+        "--execution-timeout-ms",
+        type=int,
+        default=int(os.environ.get("RUNPOD_EXECUTION_TIMEOUT_MS", "600000")),
+        help="Max ms per Serverless request (cold start + downloads can exceed 5m)",
+    )
+    e.add_argument(
         "--scaler-value",
         type=int,
         default=int(os.environ.get("RUNPOD_SCALER_VALUE", "30")),
@@ -186,6 +202,11 @@ def main() -> None:
         "--data-centers",
         default="",
         help="Comma-separated RunPod data center ids (or RUNPOD_DATA_CENTERS)",
+    )
+    e.add_argument(
+        "--network-volume-id",
+        default=os.environ.get("RUNPOD_NETWORK_VOLUME_ID", ""),
+        help="Optional network volume id (mount path must match template / worker config)",
     )
     e.set_defaults(func=cmd_create_endpoint)
 
@@ -200,11 +221,17 @@ def main() -> None:
     a.add_argument("--workers-max", type=int, default=int(os.environ.get("RUNPOD_WORKERS_MAX", "3")))
     a.add_argument("--idle-timeout", type=int, default=int(os.environ.get("RUNPOD_IDLE_TIMEOUT", "300")))
     a.add_argument(
+        "--execution-timeout-ms",
+        type=int,
+        default=int(os.environ.get("RUNPOD_EXECUTION_TIMEOUT_MS", "600000")),
+    )
+    a.add_argument(
         "--scaler-value",
         type=int,
         default=int(os.environ.get("RUNPOD_SCALER_VALUE", "30")),
     )
     a.add_argument("--data-centers", default="")
+    a.add_argument("--network-volume-id", default=os.environ.get("RUNPOD_NETWORK_VOLUME_ID", ""))
     a.set_defaults(func=cmd_create_all)
 
     ns = ap.parse_args()

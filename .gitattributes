@@ -1,0 +1,2 @@
+# Shell copied into Linux images must use LF (CRLF breaks #! and causes exec ENOENT).
+runpod/*.sh text eol=lf

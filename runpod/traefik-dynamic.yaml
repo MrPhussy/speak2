@@ -5,7 +5,19 @@ http:
         prefixes:
           - /api
 
+    # RunPod HTTP probes often use GET /ping — backend serves a cheap JSON at GET /.
+    ping-to-backend-root:
+      replacePath:
+        path: /
+
   routers:
+    to-ping:
+      rule: Path(`/ping`) || PathPrefix(`/ping/`)
+      entryPoints: [web]
+      middlewares: [ping-to-backend-root]
+      service: backend-svc
+      priority: 200
+
     to-backend:
       rule: PathPrefix(`/api`)
       entryPoints: [web]

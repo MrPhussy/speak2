@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Build linux/amd64 image for RunPod and push to Docker Hub.
+# Build linux/amd64 image for RunPod (Pods + Serverless) and push to Docker Hub.
+# Default CUDA_COMPUTE_CAP=120 matches Blackwell (e.g. RTX PRO 4500). Ada: CUDA_COMPUTE_CAP=89
 # Requires: native x86_64 (or reliable amd64 build), Docker logged in (`docker login`).
 # Usage:
 #   export IMAGE_NAME=docker.io/osophy/speak2-unmute:runpod   # optional override

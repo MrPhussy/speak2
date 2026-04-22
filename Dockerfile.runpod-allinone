@@ -1,6 +1,9 @@
 # syntax=docker/dockerfile:1
 # Single image: Traefik (file provider) + Next.js frontend + Unmute backend + Kyutai STT + Kyutai TTS.
-# Intended for RunPod Pods (one container) and later Serverless once validated.
+# RunPod Pods and RunPod Serverless (one container per worker). HTTP on :80 — set template ports to 80/http.
+#
+# RTX PRO 4500 Blackwell (RunPod GPU id: NVIDIA RTX PRO 4500 Blackwell): Blackwell sm_120 — default build-arg below.
+# Ada workstation cards need: --build-arg CUDA_COMPUTE_CAP=89
 #
 # Build (from speak2 repo root; submodule `unmute/` must be present):
 #   docker build -f Dockerfile.runpod-allinone -t your-registry/speak2-unmute:runpod .
@@ -162,11 +165,13 @@ COPY runpod/run-stt.sh /opt/speak2/run-stt.sh
 COPY runpod/run-tts.sh /opt/speak2/run-tts.sh
 COPY runpod/run-backend.sh /opt/speak2/run-backend.sh
 COPY runpod/run-frontend.sh /opt/speak2/run-frontend.sh
-RUN chmod +x /opt/speak2/*.sh /usr/local/bin/moshi-server
+RUN chmod +x /opt/speak2/*.sh /usr/local/bin/moshi-server \
+    && sed -i 's/\r$//' /opt/speak2/*.sh
 
 EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=300s --retries=3 \
-    CMD curl -fsS http://127.0.0.1:80/ >/dev/null || exit 1
+    CMD curl -fsS http://127.0.0.1:80/ping >/dev/null || exit 1
 
-ENTRYPOINT ["/opt/speak2/entrypoint.sh"]
+# Invoke via bash so a bad shebang (e.g. CRLF from Windows checkouts) cannot break startup.
+ENTRYPOINT ["/bin/bash", "/opt/speak2/entrypoint.sh"]

@@ -60,13 +60,41 @@ Use a registry RunPod can pull from (Docker Hub, GHCR, ECR, etc.).
 
 4. Wait for **first boot**: Kyutai may download models on first STT/TTS start (several minutes). Watch **Logs** until Traefik answers on `/`.
 
-5. **Healthcheck**: image `HEALTHCHECK` curls `http://127.0.0.1:80/`; allow several minutes before the Pod shows healthy.
+5. **Healthcheck**: image `HEALTHCHECK` curls `http://127.0.0.1:80/ping` (Traefik forwards to the backend root). For Serverless, set the probe path to **`/ping`** if the console asks. **Do not** mount a volume on **`/opt/speak2`** (it would hide `entrypoint.sh`).
 
-### RunPod Serverless (later)
+### RunPod Serverless (RTX PRO 4500 Blackwell)
 
-Serverless workers are still **one container** per worker; this image is compatible **in principle** once you validate on a Pod. You will likely need a **load-balancing** or **custom HTTP** endpoint type, correct **idle/execution timeouts**, and possibly a wrapper if RunPod expects a specific `CMD` — adapt after Pod testing. See [Serverless overview](https://docs.runpod.io/serverless/overview).
+Workers are still **one GPU container** each. This image listens on **port 80** (Traefik); no RunPod Python `handler` is required for **HTTP / WebSocket** workloads.
 
-REST helper (template + endpoint with **FlashBoot**): [`scripts/runpod_unmute_rest.py`](../scripts/runpod_unmute_rest.py) — set `RUNPOD_API_KEY`, `RUNPOD_IMAGE_NAME`, and LLM/HF env vars as needed. Optional HTTP check: [`scripts/runpod_unmute_smoke.sh`](../scripts/runpod_unmute_smoke.sh) with `RUNPOD_UNMUTE_URL`.
+1. **Build** (Blackwell / RTX PRO 4500 — default `CUDA_COMPUTE_CAP=120`):
+
+```bash
+docker build --platform linux/amd64 -f Dockerfile.runpod-allinone \
+  --build-arg CUDA_COMPUTE_CAP=120 \
+  -t YOUR_REGISTRY/speak2-unmute:runpod .
+docker push YOUR_REGISTRY/speak2-unmute:runpod
+```
+
+2. **Serverless template** (console or API): **GPU**, image above, **ports** `80/http`, **FlashBoot** on. Set env at least:
+
+| Name | Notes |
+|------|--------|
+| `PORT` | `80` (RunPod routing) |
+| `PORT_HEALTH` | `80` |
+| `HUGGING_FACE_HUB_TOKEN` | Required |
+| `KYUTAI_LLM_API_KEY` | Required for external LLM (e.g. Inception) |
+| `KYUTAI_LLM_URL` | Optional; default `https://api.inceptionlabs.ai` |
+| `KYUTAI_LLM_MODEL` | Optional; default `mercury-2` |
+
+3. **GPU type**: RunPod id **`NVIDIA RTX PRO 4500 Blackwell`** ([GPU types](https://docs.runpod.io/references/gpu-types)). If the REST API rejects that string until OpenAPI catches up, pick the same GPU in the console or set `RUNPOD_GPU_TYPE` when using the script below.
+
+4. **Timeouts**: First boot can **download Kyutai weights** (several minutes). Set **execution timeout** high (e.g. **600000 ms** = 10 minutes) on the endpoint so probe traffic does not fail mid-download. **Idle timeout** (e.g. 300 s) controls how long a warm worker sits without jobs.
+
+5. **Optional network volume**: Attach a volume and mount it where the entrypoint expects caches (**`/runpod-volume`**, or set `RUNPOD_VOLUME_ROOT` to match your mount path). Reduces repeat downloads across workers.
+
+REST helper (template + endpoint, **FlashBoot**, default GPU RTX PRO 4500, `executionTimeoutMs` **600000**): [`scripts/runpod_unmute_rest.py`](../scripts/runpod_unmute_rest.py) — set `RUNPOD_API_KEY`, `RUNPOD_IMAGE_NAME`, and LLM/HF env vars. Optional: `RUNPOD_NETWORK_VOLUME_ID`, `RUNPOD_EXECUTION_TIMEOUT_MS`. Optional HTTP check: [`scripts/runpod_unmute_smoke.sh`](../scripts/runpod_unmute_smoke.sh) with `RUNPOD_UNMUTE_URL`.
+
+See [Serverless overview](https://docs.runpod.io/serverless/overview).
 
 SpacetimeDB **DID → mode** module (VEXYL): [`contrib/call-routing-core`](../contrib/call-routing-core), runbook [`docs/CALL_ROUTING_SPACETIME.md`](CALL_ROUTING_SPACETIME.md).
 
